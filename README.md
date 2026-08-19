@@ -51,6 +51,38 @@ python rag_posts.py memory --top-themes 12 --posts-per-theme 5 --output mes_souv
 
 Si l'index `rag_index.pkl` est absent, il sera construit automatiquement.
 
+## Générer des blog posts
+
+```powershell
+python rag_posts.py blog
+```
+
+Génère des articles de blog en Markdown à partir de tes publications Facebook via Ollama. Le script détecte automatiquement les thèmes récurrents (LDA), récupère les posts associés, puis demande à Ollama de rédiger un article structuré pour chaque thème.
+
+Articles exportés dans le dossier `blog_posts/` avec frontmatter YAML (titre, thème, date, sources).
+
+Avec détection automatique des thèmes :
+
+```powershell
+python rag_posts.py blog --model mistral
+```
+
+Avec des thèmes personnalisés :
+
+```powershell
+python rag_posts.py blog --topics "intelligence artificielle" "cybersécurité" "trading" --model gemma4
+```
+
+Options :
+
+```
+--model <nom>            modèle Ollama (défaut : mistral)
+--top-themes <n>         nombre de thèmes à transformer en articles (défaut : 5)
+--posts-per-theme <n>    nombre de posts récupérés par thème (défaut : 4)
+--output-dir <dossier>   dossier de sortie (défaut : blog_posts/)
+--topics <t1> <t2> ...   thèmes personnalisés (désactive la détection LDA)
+```
+
 ## Chatbot interactif
 
 ```powershell
@@ -120,6 +152,11 @@ python rag_posts.py ask "Quels posts contiennent une photo ou une video avec une
 python rag_posts.py ask "Retrouve les publications ou je parle de travail, business ou productivite"
 python rag_posts.py ask "Quels themes je mentionne entre 2023 et 2024 ?" --llm ollama
 python rag_posts.py ask "Fais-moi un resume de ce que je publie le plus souvent" --llm ollama
+```
+
+```powershell
+python rag_posts.py blog --model mistral --top-themes 8
+python rag_posts.py blog --topics "IA locale" "sécurité" "open source" --model gemma4
 ```
 
 ## Limites actuelles

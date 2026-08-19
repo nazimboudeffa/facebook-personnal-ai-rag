@@ -776,6 +776,129 @@ def build_memory(
     )
 
 
+def build_blog_prompt(topic_label: str, words: list[str], contexts: list[dict[str, Any]]) -> str:
+    context_blocks = []
+    for rank, item in enumerate(contexts, start=1):
+        excerpt = excerpt_text(item["text"])
+        if not excerpt:
+            continue
+        block = [
+            f"[Extrait {rank}]",
+            f"Date: {format_iso(item['iso_date'])}",
+            f"Texte: {excerpt}",
+        ]
+        if item["url"]:
+            block.append(f"Lien: {item['url']}")
+        context_blocks.append("\n".join(block))
+
+    if not context_blocks:
+        return ""
+
+    return (
+        "Tu es un blogueur expérimenté qui écrit en français.\n"
+        "À partir des extraits de publications Facebook ci-dessous, rédige un article de blog\n"
+        "structuré autour du thème « {topic} » (mots-clés : {words}).\n\n"
+        "Règles :\n"
+        "- Titre accrocheur en une ligne\n"
+        "- Introduction courte (2-3 phrases)\n"
+        "- 2 à 4 sections avec des titres H2 (## Titre)\n"
+        "- Conclusion ou ouverture\n"
+        "- Ton personnel et authentique, comme si tu parlais de ton vécu\n"
+        "- Ne répète pas les extraits mot pour mot, réinterprète-les\n"
+        "- Longueur : 300 à 600 mots\n"
+        "- Ne mentionne pas que c'est généré à partir de Facebook\n\n"
+        "Extraits de tes publications :\n\n"
+        "{contexts}"
+    ).format(
+        topic=topic_label,
+        words=", ".join(words),
+        contexts="\n\n".join(context_blocks),
+    )
+
+
+def generate_blog_posts(
+    json_path: Path,
+    index_path: Path,
+    output_dir: Path,
+    model: str,
+    n_topics: int,
+    posts_per_theme: int,
+    custom_topics: list[str] | None = None,
+) -> None:
+    entries = load_entries(json_path)
+
+    if not index_path.exists():
+        print(f"Index absent, construction de {index_path} ...", file=sys.stdout)
+        build_index(json_path, index_path)
+    index_data = load_index(index_path)
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    if custom_topics:
+        topics = [
+            {"words": topic.split(), "query": topic, "share": 0.0}
+            for topic in custom_topics
+        ]
+    else:
+        topics = compute_topics(entries, n_topics=n_topics)
+        if not topics:
+            print("Aucun thème trouvé.", file=sys.stdout)
+            return
+
+    generated: list[str] = []
+    for index, topic in enumerate(topics, start=1):
+        label = topic["words"][0] if topic["words"] else "sans_titre"
+        query = topic.get("query", " ".join(topic["words"][:4]))
+
+        print(f"[{index}/{len(topics)}] Récupération des posts pour « {query} » ...", file=sys.stdout)
+        results = retrieve(index_data, query, top_k=posts_per_theme * 5)
+
+        seen_posts: set[int] = set()
+        picked: list[dict[str, Any]] = []
+        for item in results:
+            post_id = item["post_id"]
+            if post_id in seen_posts:
+                continue
+            seen_posts.add(post_id)
+            picked.append(item)
+            if len(picked) >= posts_per_theme:
+                break
+
+        if not picked:
+            print(f"  Aucun post trouvé pour « {query} », passage au suivant.", file=sys.stdout)
+            continue
+
+        prompt = build_blog_prompt(label.capitalize(), topic["words"], picked)
+        if not prompt:
+            continue
+
+        print(f"  Génération du blog post avec {model} ...", file=sys.stdout)
+        try:
+            blog_text = ask_ollama(prompt, model=model)
+        except RuntimeError as exc:
+            print(f"  Erreur Ollama : {exc}", file=sys.stdout)
+            continue
+
+        safe_name = re.sub(r"[^\w\-]", "_", label.lower())[:40]
+        filename = output_dir / f"{index:02d}_{safe_name}.md"
+        metadata_block = (
+            f"---\n"
+            f"title: \"{label.capitalize()}\"\n"
+            f"theme: {', '.join(topic['words'])}\n"
+            f"share: {topic.get('share', 0) * 100:.1f}%\n"
+            f"source_posts: {len(picked)}\n"
+            f"generated: {datetime.now().isoformat()}\n"
+            f"---\n\n"
+        )
+        filename.write_text(metadata_block + blog_text, encoding="utf-8")
+        generated.append(str(filename))
+        print(f"  → {filename}", file=sys.stdout)
+
+    print(f"\n{len(generated)} blog post(s) généré(s) dans {output_dir}/", file=sys.stdout)
+    for path in generated:
+        print(f"  - {path}", file=sys.stdout)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="RAG minimal sur un export JSON de posts.")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -813,6 +936,20 @@ def parse_args() -> argparse.Namespace:
     memory_parser.add_argument("--top-themes", type=int, default=8, help="Nombre de thèmes LDA à exporter.")
     memory_parser.add_argument("--posts-per-theme", type=int, default=3)
 
+    blog_parser = subparsers.add_parser(
+        "blog", help="Génère des blog posts à partir de tes publications via Ollama."
+    )
+    blog_parser.add_argument("--json", type=Path, default=DEFAULT_JSON_PATH)
+    blog_parser.add_argument("--index", type=Path, default=DEFAULT_INDEX_PATH)
+    blog_parser.add_argument("--output-dir", type=Path, default=Path("blog_posts"))
+    blog_parser.add_argument("--model", type=str, default="mistral")
+    blog_parser.add_argument("--top-themes", type=int, default=5, help="Nombre de thèmes à transformer en articles.")
+    blog_parser.add_argument("--posts-per-theme", type=int, default=4, help="Nombre de posts par thème pour alimenter le contexte.")
+    blog_parser.add_argument(
+        "--topics", nargs="*", default=None,
+        help="Thèmes personnalisés (au lieu de la détection LDA). Ex: --topics 'intelligence artificielle' 'crypto'",
+    )
+
     return parser.parse_args()
 
 
@@ -838,6 +975,17 @@ def main() -> None:
     if args.command == "memory":
         entries = load_entries(args.json)
         build_memory(entries, args.index, args.output, args.top_themes, args.posts_per_theme, args.json)
+        return
+    if args.command == "blog":
+        generate_blog_posts(
+            json_path=args.json,
+            index_path=args.index,
+            output_dir=args.output_dir,
+            model=args.model,
+            n_topics=args.top_themes,
+            posts_per_theme=args.posts_per_theme,
+            custom_topics=args.topics,
+        )
         return
     raise ValueError(f"Commande inconnue: {args.command}")
 
