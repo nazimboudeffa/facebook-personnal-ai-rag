@@ -64,7 +64,7 @@ Articles exportés dans le dossier `blog_posts/` avec frontmatter YAML (titre, t
 Avec détection automatique des thèmes :
 
 ```powershell
-python rag_posts.py blog --model mistral
+python rag_posts.py blog --model gemma4
 ```
 
 Avec des thèmes personnalisés :
