@@ -881,6 +881,34 @@ def generate_blog_posts(
 
         safe_name = re.sub(r"[^\w\-]", "_", label.lower())[:40]
         filename = output_dir / f"{index:02d}_{safe_name}.md"
+
+        sources_section = ["\n\n---\n\n## Sources\n"]
+        for rank, item in enumerate(picked, start=1):
+            excerpt = excerpt_text(item["text"])
+            source_line = f"{rank}. **{format_iso(item['iso_date'])}**"
+            if item["title"]:
+                source_line += f" — {md_escape(item['title'])}"
+            if item["url"]:
+                source_line += f"  \n   Lien : {item['url']}"
+            if excerpt:
+                source_line += f"\n   > {md_escape(excerpt[:200])}"
+            sources_section.append(source_line)
+
+        sources_json = [
+            {
+                "rank": rank,
+                "post_id": item["post_id"],
+                "date": item["iso_date"],
+                "title": item["title"],
+                "url": item["url"],
+                "media_uri": item.get("media_uri"),
+                "score": item.get("score"),
+                "excerpt": excerpt_text(item["text"])[:300],
+            }
+            for rank, item in enumerate(picked, start=1)
+        ]
+        sources_yaml = json.dumps(sources_json, ensure_ascii=False, indent=2)
+
         metadata_block = (
             f"---\n"
             f"title: \"{label.capitalize()}\"\n"
@@ -888,9 +916,14 @@ def generate_blog_posts(
             f"share: {topic.get('share', 0) * 100:.1f}%\n"
             f"source_posts: {len(picked)}\n"
             f"generated: {datetime.now().isoformat()}\n"
+            f"sources:\n{sources_yaml}\n"
             f"---\n\n"
         )
-        filename.write_text(metadata_block + blog_text, encoding="utf-8")
+        filename.write_text(
+            metadata_block + blog_text + "\n".join(sources_section),
+            encoding="utf-8",
+        )
+
         generated.append(str(filename))
         print(f"  → {filename}", file=sys.stdout)
 

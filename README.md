@@ -59,7 +59,7 @@ python rag_posts.py blog
 
 Génère des articles de blog en Markdown à partir de tes publications Facebook via Ollama. Le script détecte automatiquement les thèmes récurrents (LDA), récupère les posts associés, puis demande à Ollama de rédiger un article structuré pour chaque thème.
 
-Articles exportés dans le dossier `blog_posts/` avec frontmatter YAML (titre, thème, date, sources).
+Articles exportés dans le dossier `blog_posts/` avec frontmatter YAML (titre, thème, date, sources). Les métadonnées des publications sources (post_id, date, titre, URL, score) sont incluses directement dans le frontmatter `sources:` de chaque fichier, et une section `## Sources` lisible est ajoutée en bas de l'article.
 
 Avec détection automatique des thèmes :
 
