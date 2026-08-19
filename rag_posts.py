@@ -894,7 +894,8 @@ def generate_blog_posts(
 
         safe_name = re.sub(r"[^\w\-]", "_", label.lower())[:40]
         date_tag = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = output_dir / f"{index:02d}_{safe_name}_{date_tag}.md"
+        safe_model = re.sub(r"[^\w\-]", "_", model.lower())[:20]
+        filename = output_dir / f"{date_tag}_{safe_name}_{safe_model}.md"
 
         sources_section = ["\n\n---\n\n## Sources\n"]
         for rank, item in enumerate(picked, start=1):
