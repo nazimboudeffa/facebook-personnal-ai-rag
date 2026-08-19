@@ -824,6 +824,7 @@ def generate_blog_posts(
     n_topics: int,
     posts_per_theme: int,
     custom_topics: list[str] | None = None,
+    single: bool = False,
 ) -> None:
     entries = load_entries(json_path)
 
@@ -835,15 +836,27 @@ def generate_blog_posts(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if custom_topics:
-        topics = [
-            {"words": topic.split(), "query": topic, "share": 0.0}
-            for topic in custom_topics
-        ]
+        if single and len(custom_topics) > 1:
+            all_words = []
+            for t in custom_topics:
+                all_words.extend(t.split())
+            topics = [{"words": all_words, "query": " ".join(custom_topics), "share": 0.0}]
+        else:
+            topics = [
+                {"words": topic.split(), "query": topic, "share": 0.0}
+                for topic in custom_topics
+            ]
     else:
         topics = compute_topics(entries, n_topics=n_topics)
         if not topics:
             print("Aucun thème trouvé.", file=sys.stdout)
             return
+        if single and len(topics) > 1:
+            all_words = []
+            for t in topics:
+                all_words.extend(t["words"])
+            queries = [t.get("query", " ".join(t["words"][:4])) for t in topics]
+            topics = [{"words": all_words, "query": " ".join(queries), "share": 0.0}]
 
     generated: list[str] = []
     for index, topic in enumerate(topics, start=1):
@@ -986,6 +999,10 @@ def parse_args() -> argparse.Namespace:
         "--topics", nargs="*", default=None,
         help="Thèmes personnalisés (au lieu de la détection LDA). Ex: --topics 'intelligence artificielle' 'crypto'",
     )
+    blog_parser.add_argument(
+        "--single", action="store_true",
+        help="Fusionne tous les topics en un seul article.",
+    )
 
     return parser.parse_args()
 
@@ -1022,6 +1039,7 @@ def main() -> None:
             n_topics=args.top_themes,
             posts_per_theme=args.posts_per_theme,
             custom_topics=args.topics,
+            single=args.single,
         )
         return
     raise ValueError(f"Commande inconnue: {args.command}")

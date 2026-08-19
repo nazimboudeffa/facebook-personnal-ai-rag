@@ -73,6 +73,12 @@ Avec des thèmes personnalisés :
 python rag_posts.py blog --topics "intelligence artificielle" "cybersécurité" "trading" --model gemma4
 ```
 
+Un seul article combinant tous les topics :
+
+```powershell
+python rag_posts.py blog --topics "intelligence artificielle" "cybersécurité" "trading" --single --model gemma4
+```
+
 Options :
 
 ```
@@ -81,6 +87,7 @@ Options :
 --posts-per-theme <n>    nombre de posts récupérés par thème (défaut : 4)
 --output-dir <dossier>   dossier de sortie (défaut : blog_posts/)
 --topics <t1> <t2> ...   thèmes personnalisés (désactive la détection LDA)
+--single                 fusionne tous les topics en un seul article
 ```
 
 ## Chatbot interactif
@@ -157,6 +164,7 @@ python rag_posts.py ask "Fais-moi un resume de ce que je publie le plus souvent"
 ```powershell
 python rag_posts.py blog --model mistral --top-themes 8
 python rag_posts.py blog --topics "IA locale" "sécurité" "open source" --model gemma4
+python rag_posts.py blog --topics "IA locale" "sécurité" "open source" --single --model gemma4
 ```
 
 ## Limites actuelles
