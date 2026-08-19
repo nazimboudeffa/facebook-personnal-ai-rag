@@ -907,7 +907,10 @@ def generate_blog_posts(
             }
             for rank, item in enumerate(picked, start=1)
         ]
-        sources_yaml = json.dumps(sources_json, ensure_ascii=False, indent=2)
+        sources_json = json.dumps(sources_json, ensure_ascii=False, indent=2)
+        sources_yaml_lines = "\n".join(
+            "  " + line for line in sources_json.splitlines()
+        )
 
         metadata_block = (
             f"---\n"
@@ -916,7 +919,7 @@ def generate_blog_posts(
             f"share: {topic.get('share', 0) * 100:.1f}%\n"
             f"source_posts: {len(picked)}\n"
             f"generated: {datetime.now().isoformat()}\n"
-            f"sources:\n{sources_yaml}\n"
+            f"sources: |\n{sources_yaml_lines}\n"
             f"---\n\n"
         )
         filename.write_text(
