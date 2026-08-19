@@ -88,6 +88,7 @@ Options :
 --output-dir <dossier>   dossier de sortie (défaut : blog_posts/)
 --topics <t1> <t2> ...   thèmes personnalisés (désactive la détection LDA)
 --single                 fusionne tous les topics en un seul article
+--min-score <n>          score TF-IDF minimum pour inclure un post (défaut : 0.01, baisser pour plus de résultats)
 ```
 
 ## Chatbot interactif

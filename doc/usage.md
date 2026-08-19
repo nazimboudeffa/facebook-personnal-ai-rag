@@ -6,7 +6,7 @@ Le script s'utilise en ligne de commande :
 python rag_posts.py <commande> [options]
 ```
 
-Les commandes disponibles : `build`, `ask`, `chat`, `stats`, `memory`.
+Les commandes disponibles : `build`, `ask`, `chat`, `stats`, `memory`, `blog`.
 
 ## Installation
 
@@ -134,4 +134,86 @@ python rag_posts.py ask "Quels posts contiennent une photo ou une vidéo avec un
 python rag_posts.py ask "Quels thèmes je mentionne entre 2023 et 2024 ?" --llm ollama
 python rag_posts.py stats
 python rag_posts.py memory --top-themes 10 --posts-per-theme 4
+```
+
+## 6. `blog` — générer des articles de blog
+
+```powershell
+python rag_posts.py blog
+```
+
+Génère des articles de blog en Markdown à partir de tes publications Facebook via Ollama. Le script détecte les thèmes récurrents (LDA), récupère les posts associés, puis demande à Ollama de rédiger un article structuré pour chaque thème.
+
+Chaque fichier contient un frontmatter YAML (titre, thème, date, score, sources) et une section `## Sources` en fin d'article listant les publications utilisées.
+
+Avec détection automatique des thèmes :
+
+```powershell
+python rag_posts.py blog --model gemma4
+```
+
+Avec des thèmes personnalisés :
+
+```powershell
+python rag_posts.py blog --topics "intelligence artificielle" "cybersécurité" "trading" --model gemma4
+```
+
+Un seul article combinant tous les topics :
+
+```powershell
+python rag_posts.py blog --topics "intelligence artificielle" "cybersécurité" --single --model gemma4
+```
+
+Options :
+
+| Option | Défaut | Rôle |
+| --- | --- | --- |
+| `--json <fichier>` | le JSON par défaut | Fichier d'export. |
+| `--index <fichier>` | `rag_index.pkl` | Index utilisé. |
+| `--output-dir <dossier>` | `blog_posts/` | Dossier de sortie. |
+| `--model <nom>` | `mistral` | Modèle Ollama. |
+| `--top-themes <n>` | 5 | Nombre de thèmes à transformer en articles (LDA). |
+| `--posts-per-theme <n>` | 4 | Nombre de posts récupérés par thème pour alimenter le contexte. |
+| `--topics <t1> <t2> ...` | — | Thèmes personnalisés (désactive la détection LDA). |
+| `--single` | désactivé | Fusionne tous les topics en un seul article. |
+| `--min-score <n>` | 0.01 | Score TF-IDF minimum pour inclure un post. Baisser pour récupérer plus de posts, augmenter pour n garder que les meilleurs matchs. |
+
+### `--min-score` en détail
+
+Le score TF-IDF mesure à quel point un post correspond à la requête. Il va de **0** (aucune correspondance) à **1** (correspondance parfaite). En pratique sur un export Facebook, les scores pertinents tournent entre 0.01 et 0.3 :
+
+- **0.01 - 0.05** : posts qui matchent faiblement, résultats larges
+- **0.05 - 0.1** : correspondances moyennes
+- **0.1 - 0.3** : meilleurs résultats, forte similarité
+- **> 0.3** : rare, correspondance très précise
+
+Par défaut, `--min-score 0.01` exclut les posts dont le score est inférieur ou égal à 0.01. Pour inclure des posts qui matchent moins fortement :
+
+```powershell
+python rag_posts.py blog --topics "IA locale" --min-score 0.001 --model gemma4
+```
+
+Pour n garder que les meilleurs résultats :
+
+```powershell
+python rag_posts.py blog --topics "IA locale" --min-score 0.05 --model gemma4
+```
+
+### Format des fichiers générés
+
+Chaque article est un fichier Markdown unique avec un nom au format `YYYYMMDD_HHMMSS_thème_modèle.md`. Le frontmatter contient les métadonnées des publications sources en JSON pour un accès programmatique :
+
+```yaml
+---
+title: "Intelligence artificielle"
+theme: intelligence, artificielle, local
+share: 12.3%
+source_posts: 4
+generated: 2026-08-19T14:30:22
+sources: |
+  [
+    {"rank": 1, "post_id": 42, "date": "2025-03-15T10:30:00+00:00", ...},
+    ...
+  ]
+---
 ```

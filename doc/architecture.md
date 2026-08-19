@@ -21,7 +21,7 @@ Tout le code tient dans un seul fichier, `rag_posts.py`, organisé en trois zone
 | `load_entries()` | Lit et valide le JSON. |
 | `build_index()` | Entraîne le TF-IDF et sérialise l'index dans `rag_index.pkl`. |
 | `load_index()` | Recharge l'index depuis le pickle. |
-| `retrieve()` | Vectorise la question et renvoie les `top-k` chunks les plus proches (similarité cosinus). |
+| `retrieve()` | Vectorise la question et renvoie les `top-k` chunks les plus proches (similarité cosinus). Paramètre `min_score` pour filtrer par seuil TF-IDF. |
 | `build_prompt()` | Construit le prompt : instructions, historique éventuel, question, contexte. |
 | `ask_ollama()` | Appelle l'API locale d'Ollama et retourne la réponse. |
 | `format_results()` | Formate les résultats (score, titre, date, URL, média, texte) pour l'affichage. |
@@ -34,15 +34,22 @@ Tout le code tient dans un seul fichier, `rag_posts.py`, organisé en trois zone
 | Fonction | Rôle |
 | --- | --- |
 | `FRENCH_STOPWORDS` | Constante : mots français vides pour nettoyer le vocabulaire des thèmes. |
-| `classify_post_type()` | Dévient le type d'un post depuis son titre (« Photo / Vidéo », « Lien partagé »…). |
+| `classify_post_type()` | Déduit le type d'un post depuis son titre (« Photo / Vidéo », « Lien partagé »…). |
 | `collect_user_texts()` | Récupère les textes réellement rédigés (hors titres Facebook) par post. |
 | `compute_topics()` | Entraîne un modèle LDA et renvoie les thèmes triés par importance (mots + part). |
-| `compute_stats()` | Agrége tout : total, période, activité mensuelle, types, domaines, médias, textes, liens. |
+| `compute_stats()` | Agrège tout : total, période, activité mensuelle, types, domaines, médias, textes, liens. |
 | `print_stats()` | Affiche les statistiques et les thèmes dans le terminal. |
 | `md_escape()` / `format_iso()` / `excerpt_text()` | Aides au rendu Markdown (échappement, dates lisibles, extraits nettoyés). |
 | `build_memory()` | Génère `memory.md` : pour chaque thème, les posts les plus représentatifs. |
 
-### Zone CLI (lignes ~779 à 846)
+### Zone blog (lignes ~780 à 900)
+
+| Fonction | Rôle |
+| --- | --- |
+| `build_blog_prompt()` | Construit le prompt pour la génération d'un article de blog à partir de posts récupérés. |
+| `generate_blog_posts()` | Orchestre la génération : thèmes → retrieve → Ollama → export Markdown avec frontmatter sources. |
+
+### Zone CLI (lignes ~900+)
 
 | Fonction | Rôle |
 | --- | --- |
@@ -90,6 +97,26 @@ JSON ──► compute_topics ──► thèmes
               │
               ▼
    rédaction Markdown ──► memory.md
+```
+
+### Les blog posts (`blog`)
+
+```
+JSON ──► compute_topics (ou --topics) ──► thèmes
+              │
+              ▼
+  pour chaque thème (ou tous si --single) :
+    retrieve(index, thème, min_score) ──► posts dédupliqués par post_id
+              │
+              ▼
+    build_blog_prompt ──► ask_ollama ──► article Markdown
+              │
+              ▼
+    frontmatter YAML (sources JSON + métadonnées)
+    + section ## Sources (liste lisible)
+              │
+              ▼
+    blog_posts/YYYYMMDD_HHMMSS_thème_modèle.md
 ```
 
 ## Structures de données principales

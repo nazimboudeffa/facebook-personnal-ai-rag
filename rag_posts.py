@@ -210,7 +210,12 @@ def load_index(index_path: Path) -> dict[str, Any]:
         return pickle.load(handle)
 
 
-def retrieve(index_data: dict[str, Any], question: str, top_k: int) -> list[dict[str, Any]]:
+def retrieve(
+    index_data: dict[str, Any],
+    question: str,
+    top_k: int,
+    min_score: float = 0.0,
+) -> list[dict[str, Any]]:
     vectorizer: TfidfVectorizer = index_data["vectorizer"]
     matrix = index_data["matrix"]
     query_vector = vectorizer.transform([repair_text(question)])
@@ -220,7 +225,7 @@ def retrieve(index_data: dict[str, Any], question: str, top_k: int) -> list[dict
     results: list[dict[str, Any]] = []
     for idx in best_indices:
         score = float(scores[idx])
-        if score <= 0:
+        if score <= min_score:
             continue
         chunk = index_data["chunks"][idx]
         results.append({"score": score, **chunk})
@@ -825,6 +830,7 @@ def generate_blog_posts(
     posts_per_theme: int,
     custom_topics: list[str] | None = None,
     single: bool = False,
+    min_score: float = 0.01,
 ) -> None:
     entries = load_entries(json_path)
 
@@ -864,7 +870,7 @@ def generate_blog_posts(
         query = topic.get("query", " ".join(topic["words"][:4]))
 
         print(f"[{index}/{len(topics)}] Récupération des posts pour « {query} » ...", file=sys.stdout)
-        results = retrieve(index_data, query, top_k=posts_per_theme * 5)
+        results = retrieve(index_data, query, top_k=posts_per_theme * 5, min_score=min_score)
 
         seen_posts: set[int] = set()
         picked: list[dict[str, Any]] = []
@@ -1004,6 +1010,10 @@ def parse_args() -> argparse.Namespace:
         "--single", action="store_true",
         help="Fusionne tous les topics en un seul article.",
     )
+    blog_parser.add_argument(
+        "--min-score", type=float, default=0.01,
+        help="Score TF-IDF minimum pour inclure un post (défaut : 0.01).",
+    )
 
     return parser.parse_args()
 
@@ -1041,6 +1051,7 @@ def main() -> None:
             posts_per_theme=args.posts_per_theme,
             custom_topics=args.topics,
             single=args.single,
+            min_score=args.min_score,
         )
         return
     raise ValueError(f"Commande inconnue: {args.command}")
