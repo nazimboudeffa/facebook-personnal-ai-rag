@@ -1,6 +1,15 @@
-supprimer tous les posts du type "a \u00c3\u00a9crit sur le profil de"
-remplacer l'adresse ip 88.160.168.145 par xxxxx
-remplacer l'adresse ip 2a01:e0a:82a:2460:c4a5:1742:2fef:6d1b par xxxxx
-remplacer toutes les adresses ip par xxxxx
-remplacer @[1318849741:2048:Salim Benfarhat] par xxxxx
-remplacer Salim Benfarhat par xxxxx
+# Fichier de règles de filtrage pour filter_posts.py
+# Chaque section contient des règles d'un même type.
+# Pour ajouter une règle, il suffit d'en ajouter une ligne dans la section correspondante.
+
+# ── Suppressions ──────────────────────────────────────────────────────────────
+# Supprime le POST ENTIER si le titre correspond au motif (insensible à la casse).
+[delete]
+a \u00c3\u00a9crit sur le profil de
+a écrit sur le profil de
+
+# ── Remplacements de texte ────────────────────────────────────────────────────
+# Remplace toutes les occurrences de la chaîne par xxxxx (insensible à la casse).
+# Les mentions @[...] sont automatiquement remplacées par xxxxx.
+[replace]
+Salim Benfarhat

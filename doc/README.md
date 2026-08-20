@@ -30,8 +30,10 @@ Tout est fait en local : les données restent sur la machine, seul un LLM local 
 
 | Fichier | Rôle |
 | --- | --- |
-| `rag_posts.py` | Script principal, contient tout le code. |
-| `your_posts__check_ins__photos_and_videos_1.json` | Export Facebook brut (5 539 publications). |
+| `rag_posts.py` | Script principal, contient tout le code RAG, analyse et blog. |
+| `filter_posts.py` | Script de filtrage : supprime et remplace les éléments sensibles. |
+| `filter_rules.txt` | Règles de filtrage lues par `filter_posts.py` (suppressions + remplacements). |
+| `data/` | Dossier contenant les exports Facebook (ignoré par git). |
 | `requirements.txt` | Dépendances Python (`scikit-learn`). |
 | `rag_index.pkl` | Index TF-IDF sérialisé, produit par la commande `build` (généré, ignoré par git). |
 | `memory.md` | Mémoire Markdown générée par la commande `memory` (généré, ignoré par git). |

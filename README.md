@@ -33,17 +33,27 @@ pip install -r requirements.txt
 python filter_posts.py
 ```
 
-Le script applique les règles définies dans `filter.txt` :
+Le script lit les règles depuis `filter_rules.txt` et les applique au JSON. Le fichier est organisé en deux sections :
 
-1. **Supprime** les posts dont le titre contient « a écrit sur le profil de \<Nom\> »
-2. **Remplace** toutes les adresses IP (IPv4 / IPv6) par `xxxxx`
-3. **Remplace** les mentions `@[...:Salim Benfarhat]` par `xxxxx`
-4. **Remplace** le nom `Salim Benfarhat` par `xxxxx`
+```ini
+# Supprime le POST si le titre matche (insensible à la casse)
+[delete]
+a \u00c3\u00a9crit sur le profil de
+a écrit sur le profil de
+
+# Remplace la chaîne par xxxxx (insensible à la casse)
+# Les @[...] sont toujours remplacés automatiquement
+[replace]
+Salim Benfarhat
+```
+
+Les commentaires (`#`) et lignes vides sont ignorés. Pour ajouter une règle, il suffit d'en ajouter une ligne dans la section correspondante — pas besoin de toucher au Python.
 
 Les remplacements s'appliquent récursivement à toutes les valeurs du JSON (titres, descriptions, métadonnées EXIF, etc.).
 
 ```powershell
 python filter_posts.py --json data/mon_autre_export.json
+python filter_posts.py --rules mon_autre_fichier.txt
 ```
 
 Le fichier filtré est écrit à côté de l'original avec le suffixe `_filtered`.

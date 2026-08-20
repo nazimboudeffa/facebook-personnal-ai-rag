@@ -12,8 +12,73 @@ Les commandes disponibles : `build`, `ask`, `chat`, `stats`, `memory`, `blog`.
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+```
+
+## 0. `filter_posts.py` — filtrer les données
+
+```powershell
+python filter_posts.py
+```
+
+Script séparé de `rag_posts.py`. Lit les règles depuis `filter_rules.txt` et applique des suppressions et remplacements sur le JSON brut. Le fichier filtré est écrit à côté de l'original avec le suffixe `_filtered`.
+
+### Fonctionnement
+
+Le fichier `filter_rules.txt` est organisé en deux sections :
+
+```ini
+# Commentaires et lignes vides ignorés
+
+[delete]
+# Supprime le POST ENTIER si le titre matche (insensible à la casse)
+a \u00c3\u00a9crit sur le profil de
+a écrit sur le profil de
+
+[replace]
+# Remplace la chaîne par xxxxx dans toutes les valeurs du JSON
+Salim Benfarhat
+```
+
+### Ordre des remplacements
+
+Pour chaque chaîne de caractères dans le JSON, les remplacements s'appliquent dans cet ordre :
+
+1. **Tags `@[...]`** — toutes les mentions Facebook (`@[id:type Nom]`) sont remplacées par `xxxxx`
+2. **Motifs `[replace]`** — chaque ligne du fichier de règles est remplacée par `xxxxx`
+3. **Adresses IPv4** — tout motif `\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}` est remplacé par `xxxxx`
+4. **Adresses IPv6** — tout motif hexadécimal avec deux-points est remplacé par `xxxxx`
+
+L'ordre est important : les tags `@[...]` sont nettoyés en premier pour éviter que les regex IP ne découpent les IDs numériques qu'ils contiennent.
+
+### Ajouter une règle
+
+Il suffit d'ajouter une ligne dans `filter_rules.txt` :
+
+```ini
+[delete]
+nouveau motif de suppression
+
+[replace]
+nouvelle chaîne à anonymiser
+```
+
+Pas besoin de toucher au Python. Les séquences `\uXXXX` sont décodées automatiquement.
+
+### Options
+
+| Option | Défaut | Rôle |
+| --- | --- | --- |
+| `--json <fichier>` | `data/your_posts__check_ins__photos_and_videos_1.json` | Fichier d'entrée. |
+| `--rules <fichier>` | `filter_rules.txt` | Fichier de règles. |
+
+### Exemples
+
+```powershell
+python filter_posts.py
+python filter_posts.py --json data/mon_autre_export.json
+python filter_posts.py --rules mes_regles.txt
 ```
 
 ## 1. `build` — construire l'index

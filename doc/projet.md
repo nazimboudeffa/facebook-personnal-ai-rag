@@ -41,20 +41,23 @@ JSON Facebook
     │  1. Chargement
     ▼
 Entrées (dict)
-    │  2. Extraction des textes utiles + réparation de l'encodage
+    │  2. Filtrage (filter_posts.py) — suppressions + remplacements
+    ▼
+JSON filtré (data/*_filtered.json)
+    │  3. Extraction des textes utiles + réparation de l'encodage
     ▼
 Textes par post
-    │  3. Découpage en chunks
+    │  4. Découpage en chunks
     ▼
 Chunks
-    │  4. Indexation TF-IDF (fit) / vectorisation (transform)
+    │  5. Indexation TF-IDF (fit) / vectorisation (transform)
     ▼
 Index TF-IDF (matrice)  ────────────►  rag_index.pkl
     │
-    │  5. Requête : vectorisation + similarité cosinus
+    │  6. Requête : vectorisation + similarité cosinus
     ▼
 Top-k chunks pertinents
-    │  6. Prompt = question + contexte (+ historique éventuel)
+    │  7. Prompt = question + contexte (+ historique éventuel)
     ▼
     ├── LLM désactivé  → affichage brut des passages trouvés
     └── Ollama local   → réponse rédigée en français
@@ -64,7 +67,18 @@ Top-k chunks pertinents
 
 `load_entries()` lit le JSON en UTF-8, vérifie que c'est une liste, et assainit chaque élément avec `safe_get_dict()` pour ne jamais faire planter le script sur une structure inattendue.
 
-### 2. Extraction et nettoyage
+### 2. Filtrage
+
+`filter_posts.py` est un script séparé qui lit les règles depuis `filter_rules.txt` et applique deux types d'opérations sur le JSON brut :
+
+- **Suppressions** (`[delete]`) : un post est entièrement supprimé si son titre matche un des motifs.
+- **Remplacements** (`[replace]`) : les chaînes correspondantes sont remplacées par `xxxxx` dans toutes les valeurs du JSON (récursivement).
+
+Les tags `@[...]` (mentions Facebook) et les adresses IP (IPv4/IPv6) sont toujours remplacés automatiquement, indépendamment du fichier de règles.
+
+La recherche est insensible à la casse. Les séquences `\uXXXX` dans le fichier de règles sont décodées automatiquement.
+
+### 3. Extraction et nettoyage
 
 `extract_post_texts()` transforme chaque entrée en une liste de lignes étiquetées :
 
@@ -80,27 +94,28 @@ Fichier media: your_facebook_activity/posts/media/...
 
 Chaque texte passe par `repair_text()`, qui corrige les problèmes d'encodage de l'export (textes « mojibake » du type `partagÃ©` → `partagé`, caractères nuls, espaces multiples).
 
-### 3. Découpage en chunks
+### 4. Découpage en chunks
 
 Les longs posts sont découpés en morceaux de 700 caractères avec un recouvrement de 120 caractères (`chunk_text()`), pour que la recherche et le LLM reçoivent des blocs de taille raisonnable.
 
-### 4. Indexation
+### 5. Indexation
 
 `build_index()` entraîne un `TfidfVectorizer` sur tous les chunks, produit une matrice TF-IDF, puis sérialise le tout (vectoriseur + matrice + chunks) dans `rag_index.pkl` via `pickle`.
 
-### 5. Recherche
+### 6. Recherche
 
 `retrieve()` vectorise la question avec le même vectoriseur, calcule la similarité cosinus (`linear_kernel`) entre la question et tous les chunks, et renvoie les `top-k` plus pertinents avec leur score.
 
-### 6. Génération (optionnelle)
+### 7. Génération (optionnelle)
 
 - Sans LLM (`--llm none`) : les passages trouvés sont simplement affichés.
 - Avec Ollama (`--llm ollama`) : un prompt est construit (`build_prompt`) avec la question, les extraits et éventuellement l'historique récent de conversation, puis envoyé à l'API locale d'Ollama (`ask_ollama`). La réponse est affichée avec ses sources.
 
 ## Ce que le projet sait faire en plus
 
-Le pipeline ci-dessus sert de socle à quatre usages :
+Le pipeline ci-dessus sert de socle à cinq usages :
 
+- **`filter_posts.py`** — filtrage des données sensibles (suppressions + remplacements) via un fichier de règles déclaratif.
 - **`ask`** — une question unique, réponse + sources.
 - **`chat`** — une session interactive avec commandes (`/llm`, `/model`, `/top-k`, `/sources`, `/help`, `/quit`).
 - **`stats`** — analyse des publications (activité mensuelle, types de posts, thèmes LDA, domaines partagés).

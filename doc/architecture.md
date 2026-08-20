@@ -6,6 +6,8 @@ Tout le code tient dans un seul fichier, `rag_posts.py`, organisé en trois zone
 2. **L'analyse** — statistiques, extraction de thèmes (LDA), export « mémoire ».
 3. **L'interface CLI** — parsing des arguments et dispatch.
 
+Un script séparé, `filter_posts.py`, gère le filtrage des données sensibles avant indexation.
+
 ## Cartographie des fonctions
 
 ### Zone RAG (lignes ~24 à 448)
@@ -55,6 +57,37 @@ Tout le code tient dans un seul fichier, `rag_posts.py`, organisé en trois zone
 | --- | --- |
 | `parse_args()` | Définit les sous-commandes et leurs options via `argparse`. |
 | `main()` | Configure la sortie UTF-8 (Windows) et route vers le bon sous-commande. |
+
+## Script de filtrage — `filter_posts.py`
+
+Script séparé qui lit `filter_rules.txt` et applique des suppressions et remplacements sur le JSON brut avant indexation.
+
+### Fonctions
+
+| Fonction | Rôle |
+| --- | --- |
+| `load_rules()` | Parse `filter_rules.txt` : lit les sections `[delete]` et `[replace]`, compile les motifs en regex insensibles à la casse. Les séquences `\uXXXX` sont décodées automatiquement. |
+| `_should_delete()` | Vérifie si le titre d'une entrée matche un des motifs de suppression. |
+| `_redact_string()` | Applique les remplacements dans l'ordre : 1) tags `@[...]` → `xxxxx`, 2) motifs du fichier de règles, 3) adresses IPv4, 4) adresses IPv6. |
+| `_walk()` | Parcourt récursivement le JSON (str, list, dict) et applique `_redact_string()` à chaque chaîne. |
+| `process()` | Pipeline complet : suppression des posts → remplacements récursifs. |
+
+### Format de `filter_rules.txt`
+
+```ini
+# Commentaires et lignes vides ignorés
+[delete]
+motif1
+motif2
+
+[replace]
+chaîne à remplacer
+```
+
+- Les motifs dans `[delete]` suppriment le **post entier** si le titre matche.
+- Les motifs dans `[replace]` remplacent toutes les occurrences par `xxxxx` dans **toutes les valeurs** du JSON.
+- Les tags `@[...]` (mentions Facebook) sont toujours remplacés par `xxxxx`, indépendamment du fichier de règles.
+- La recherche est **insensible à la casse**.
 
 ## Flux de données
 
@@ -117,6 +150,26 @@ JSON ──► compute_topics (ou --topics) ──► thèmes
               │
               ▼
     blog_posts/YYYYMMDD_HHMMSS_thème_modèle.md
+```
+
+### Le filtrage (`filter_posts.py`)
+
+```
+filter_rules.txt ──► load_rules ──► delete_patterns + replace_patterns
+                                           │
+JSON brut ──► pour chaque entrée :          │
+    │                                       │
+    ├── _should_delete(titre, delete) ──► supprimer ou garder
+    │
+    └── _walk(valeurs, replace) ──► pour chaque chaîne :
+            │
+            ├── @[...] ──► xxxxx
+            ├── motifs [replace] ──► xxxxx
+            ├── IPv4 ──► xxxxx
+            └── IPv6 ──► xxxxx
+                    │
+                    ▼
+            JSON filtré ──► *_filtered.json
 ```
 
 ## Structures de données principales
