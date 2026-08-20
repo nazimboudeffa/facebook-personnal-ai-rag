@@ -1,0 +1,6 @@
+supprimer tous les posts du type "a \u00c3\u00a9crit sur le profil de"
+remplacer l'adresse ip 88.160.168.145 par xxxxx
+remplacer l'adresse ip 2a01:e0a:82a:2460:c4a5:1742:2fef:6d1b par xxxxx
+remplacer toutes les adresses ip par xxxxx
+remplacer @[1318849741:2048:Salim Benfarhat] xxxxx
+remplacer Salim Benfarhat par xxxxx

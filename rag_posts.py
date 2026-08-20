@@ -17,7 +17,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
 
 
-DEFAULT_JSON_PATH = Path("your_posts__check_ins__photos_and_videos_1.json")
+DEFAULT_JSON_PATH = Path("data/your_posts__check_ins__photos_and_videos_1.json")
 DEFAULT_INDEX_PATH = Path("rag_index.pkl")
 
 

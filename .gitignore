@@ -9,3 +9,4 @@ env/
 
 rag_index.pkl
 memory.md
+data/

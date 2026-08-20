@@ -1,6 +1,14 @@
 # RAG Python sur ton export JSON
 
-Ce mini-projet construit un index local a partir de `your_posts__check_ins__photos_and_videos_1.json` puis permet de poser des questions dessus.
+Ce mini-projet construit un index local à partir de ton export Facebook JSON puis permet de poser des questions dessus.
+
+Les données brutes vivent dans le dossier `data/` (ignoré par git) :
+
+```
+data/
+├── your_posts__check_ins__photos_and_videos_1.json           ← export brut
+└── your_posts__check_ins__photos_and_videos_1_filtered.json  ← après filtrage
+```
 
 Le pipeline fait 4 choses:
 
@@ -19,6 +27,27 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
+## Filtrer les données
+
+```powershell
+python filter_posts.py
+```
+
+Le script applique les règles définies dans `filter.txt` :
+
+1. **Supprime** les posts dont le titre contient « a écrit sur le profil de \<Nom\> »
+2. **Remplace** toutes les adresses IP (IPv4 / IPv6) par `xxxxx`
+3. **Remplace** les mentions `@[...:Salim Benfarhat]` par `xxxxx`
+4. **Remplace** le nom `Salim Benfarhat` par `xxxxx`
+
+Les remplacements s'appliquent récursivement à toutes les valeurs du JSON (titres, descriptions, métadonnées EXIF, etc.).
+
+```powershell
+python filter_posts.py --json data/mon_autre_export.json
+```
+
+Le fichier filtré est écrit à côté de l'original avec le suffixe `_filtered`.
+
 ## Construire l'index
 
 ```powershell
@@ -26,6 +55,12 @@ python rag_posts.py build
 ```
 
 Tu obtiendras un fichier `rag_index.pkl`.
+
+Toutes les commandes acceptent `--json` pour cibler un fichier d'entrée spécifique :
+
+```powershell
+python rag_posts.py build --json data/your_posts__check_ins__photos_and_videos_1_filtered.json
+```
 
 ## Statistiques des publications
 
